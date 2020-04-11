@@ -1,3 +1,9 @@
+# vscode settings
+.vscode/
+
+# Fortran testing
+fortran/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

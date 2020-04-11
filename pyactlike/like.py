@@ -129,46 +129,22 @@ class ACTPowerSpectrumLikelihood:
 
         self.fisher = linalg.cho_solve(linalg.cho_factor(subcov), b=np.identity(bin_no))
 
-        # # bbltt_file loading
-        # try:
-        #     self.win_func_tt = np.genfromtxt(
-        #         bbltt_file, max_rows=self.bmax, delimiter=None
-        #     )
-        # except IOError:
-        #     print("Couldn't load file", like_file)
-        #     sys.exit()
+        # read window functions
+        try:
+            bbldeep = np.load(bbldeep_file)["bpwf"]
+            self.win_func_deep = np.zeros((bmax_win, lmax_win))
+            self.win_func_deep[:bmax_win, 1:lmax_win] = bbldeep[:bmax_win, :lmax_win]
+        except IOError:
+            print("Couldn't load file", bbldeep_file)
+            sys.exit()
 
-        # # bblte_file loading
-        # try:
-        #     self.win_func_te = np.genfromtxt(
-        #         bblte_file, max_rows=self.bmax, delimiter=None
-        #     )
-        # except IOError:
-        #     print("Couldn't load file", like_file)
-        #     sys.exit()
-
-        # # bblee_file loading
-        # try:
-        #     self.win_func_ee = np.genfromtxt(
-        #         bblee_file, max_rows=self.bmax, delimiter=None
-        #     )
-        # except IOError:
-        #     print("Couldn't load file", like_file)
-        #     sys.exit()
-
-        # # add an initial column of zeroes, since input data starts at l=2 and we need l = 1
-        # self.win_func_tt = np.hstack(
-        #     (np.transpose([np.zeros(self.bmax)]), self.win_func_tt)
-        # )
-        # self.win_func_te = np.hstack(
-        #     (np.transpose([np.zeros(self.bmax)]), self.win_func_te)
-        # )
-        # self.win_func_ee = np.hstack(
-        #     (np.transpose([np.zeros(self.bmax)]), self.win_func_ee)
-        # )
-
-        # if print_version:
-        #     print("Finished initializing.")
+        try:
+            bblwide = np.load(bblwide_file)["bpwf"]
+            self.win_func_wide = np.zeros((bmax_win, lmax_win))
+            self.win_func_wide[:bmax_win, 1:lmax_win] = bblwide[:bmax_win, :lmax_win]
+        except IOError:
+            print("Couldn't load file", bblwide_file)
+            sys.exit()
 
     # def loglike(self, cell_tt, cell_te, cell_ee, yp):
     #     """

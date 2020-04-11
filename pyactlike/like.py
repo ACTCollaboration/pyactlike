@@ -7,6 +7,8 @@ from scipy.io import FortranFile  # need this to read the fortran data format
 from scipy import linalg  # need this for cholesky decomposition and inverse
 import pkg_resources
 
+# NOTE: all bin indices are i-1 if they are i in the fortran likelihood, like b0 and bmin
+
 
 class ACTPowerSpectrumLikelihood:
     def __init__(
@@ -16,8 +18,8 @@ class ACTPowerSpectrumLikelihood:
         use_te=True,
         use_ee=True,
         tt_lmax=5000,
-        b0=6,  # first bin in TT theory selection
-        bmin=1,  # for ACTPol only or ACTPol+WMAP, 24 for ACTPol+Planck
+        bmin=0,  # for ACTPol only or ACTPol+WMAP, 24 for ACTPol+Planck
+        b0=5,  # first bin in TT theory selection
         nbin=260,  # total bins
         nbinw=130,  # total bins in single patch
         nbintt=40,
@@ -26,7 +28,6 @@ class ACTPowerSpectrumLikelihood:
         lmax_win=7925,  # total ell in window functions
         bmax_win=520,  # total bins in window functions
         bmax=52,  # total bins in windows for one spec
-        sigc=0.01,  # ACTPol temperature calibration
     ):
 
         # set up all the config variables
@@ -36,17 +37,18 @@ class ACTPowerSpectrumLikelihood:
         self.use_ee = use_ee
         self.tt_lmax = tt_lmax
         self.nbin = nbin
-        self.lmax_win = lmax_win
-        self.bmax = bmax
-        self.sigc = sigc
         self.b0 = b0
+        self.nbinw = nbinw
         self.nbintt = nbintt
         self.nbinte = nbinte
         self.nbinee = nbinee
+        self.lmax_win = lmax_win
+        self.bmax_win = bmax_win
+        self.bmax = bmax
 
-        # self.version = "ACTPol_s2_cmbonly_like"
-        # if print_version:
-        #     print("Initializing ACTPol likelihood, version", self.version)
+        self.version = "ACTPollite dr4"
+        if print_version:
+            print("Initializing ACTPol likelihood, version", self.version)
 
         # set up the data file names
         like_file = os.path.join(self.data_dir, "cl_cmb_ap.dat")
@@ -119,7 +121,7 @@ class ACTPowerSpectrumLikelihood:
             subcov[nbinee:bin_no, :nbinee] = cov[
                 nbinw + nbintt + nbinte : nbinw + nbinw, nbintt + nbinte : nbinw
             ]  # offdiag
-        elif use_tt and use_te and use_ee:  # EE only
+        elif use_tt and use_te and use_ee:  # all
             bin_no = nbin
             subcov = cov
         else:
@@ -127,107 +129,110 @@ class ACTPowerSpectrumLikelihood:
                 "Options are: (TT+TE+EE), (only TT), (only TE), or (only EE)"
             )
 
+        self.bin_no = bin_no
         self.fisher = linalg.cho_solve(linalg.cho_factor(subcov), b=np.identity(bin_no))
 
         # read window functions
         try:
             bbldeep = np.load(bbldeep_file)["bpwf"]
-            self.win_func_deep = np.zeros((bmax_win, lmax_win))
-            self.win_func_deep[:bmax_win, 1:lmax_win] = bbldeep[:bmax_win, :lmax_win]
+            self.win_func_d = np.zeros((bmax_win, lmax_win))
+            self.win_func_d[:bmax_win, 1:lmax_win] = bbldeep[:bmax_win, :lmax_win]
         except IOError:
             print("Couldn't load file", bbldeep_file)
             sys.exit()
 
         try:
             bblwide = np.load(bblwide_file)["bpwf"]
-            self.win_func_wide = np.zeros((bmax_win, lmax_win))
-            self.win_func_wide[:bmax_win, 1:lmax_win] = bblwide[:bmax_win, :lmax_win]
+            self.win_func_w = np.zeros((bmax_win, lmax_win))
+            self.win_func_w[:bmax_win, 1:lmax_win] = bblwide[:bmax_win, :lmax_win]
         except IOError:
             print("Couldn't load file", bblwide_file)
             sys.exit()
 
-    # def loglike(self, cell_tt, cell_te, cell_ee, yp):
-    #     """
+    def loglike(self, cell_tt, cell_te, cell_ee, yp2):
+        """
+	    Pass in the cell_tt, cell_te, cell_ee, and yp values, get 2 * log L out.
+        """
 
+        # ----- coding notes -----
+        # python is ZERO indexed, so l = 1 corresponds to an index i = 0
+        # fortran indices start at ONE
+        #
+        # general rule for indexing in fortran to python:
+        # array(a:b, c:d) in Fortran --> array[a-1:b, c-1:d] in Python
+        # all of our data starts with l = 2
 
-# 	Pass in the cell_tt, cell_te, cell_ee, and yp values, get 2 * log L out.
-#     """
+        X_model = np.zeros(self.nbin)
+        Y = np.zeros(self.nbin)
 
-#     # ----- coding notes -----
-#     # python is ZERO indexed, so l = 1 corresponds to an index i = 0
-#     # fortran indices start at ONE
-#     #
-#     # general rule for indexing in fortran to python:
-#     # array(a:b, c:d) in Fortran --> array[a-1:b, c-1:d] in Python
-#     # all of our data starts with l = 2
+        l_list = np.array(range(2, self.tt_lmax + 1))
 
-#     X_model = np.zeros(self.nbin)
-#     Y = np.zeros(self.nbin)
+        cltt = np.zeros(self.lmax_win)
+        clte = np.zeros(self.lmax_win)
+        clee = np.zeros(self.lmax_win)
 
-#     l_list = np.array(range(2, self.tt_lmax + 1))
+        # convert to regular C_l, get rid of weighting
+        cltt[1 : self.tt_lmax] = cell_tt / l_list / (l_list + 1.0) * 2.0 * np.pi
+        clte[1 : self.tt_lmax] = cell_te / l_list / (l_list + 1.0) * 2.0 * np.pi
+        clee[1 : self.tt_lmax] = cell_ee / l_list / (l_list + 1.0) * 2.0 * np.pi
 
-#     cltt = np.zeros(self.lmax_win)
-#     clte = np.zeros(self.lmax_win)
-#     clee = np.zeros(self.lmax_win)
+        # use 150x150 windows
+        bmax, lmax_win = self.bmax, self.lmax_win
+        cl_tt_d = self.win_func_d[2 * bmax : 3 * bmax, 1:lmax_win] @ cltt[1:lmax_win]
+        cl_te_d = self.win_func_d[6 * bmax : 7 * bmax, 1:lmax_win] @ clte[1:lmax_win]
+        cl_ee_d = self.win_func_d[9 * bmax : 10 * bmax, 1:lmax_win] @ clee[1:lmax_win]
+        # use 150x150 windows
+        cl_tt_w = self.win_func_w[2 * bmax : 3 * bmax, 1:lmax_win] @ cltt[1:lmax_win]
+        cl_te_w = self.win_func_w[6 * bmax : 7 * bmax, 1:lmax_win] @ clte[1:lmax_win]
+        cl_ee_w = self.win_func_w[9 * bmax : 10 * bmax, 1:lmax_win] @ clee[1:lmax_win]
 
-#     # convert to regular C_l, get rid of weighting
-#     cltt[1 : self.tt_lmax] = cell_tt / l_list / (l_list + 1.0) * 2.0 * np.pi
-#     clte[1 : self.tt_lmax] = cell_te / l_list / (l_list + 1.0) * 2.0 * np.pi
-#     clee[1 : self.tt_lmax] = cell_ee / l_list / (l_list + 1.0) * 2.0 * np.pi
+        # Select ell range in theory
+        b0, nbintt, nbinte, nbinee = self.b0, self.nbintt, self.nbinte, self.nbinee
+        X_model[:nbintt] = cl_tt_d[b0 : b0 + nbintt]  # TT
+        X_model[nbintt : nbintt + nbinte] = cl_te_d[:nbinte] * yp2  # TE
+        X_model[nbintt + nbinte : nbintt + nbinte + nbinee] = (
+            cl_ee_d[:nbinee] * yp2 * yp2
+        )  # EE
+        X_model[nbintt + nbinte + nbinee : 2 * nbintt + nbinte + nbinee] = cl_tt_w[
+            b0 : b0 + nbintt
+        ]  # TT
+        X_model[2 * nbintt + nbinte + nbinee : 2 * nbintt + 2 * nbinte + nbinee] = (
+            cl_te_w[:nbinte] * yp2
+        )  # TE
+        X_model[
+            2 * nbintt + 2 * nbinte + nbinee : 2 * nbintt + 2 * nbinte + 2 * nbinee
+        ] = (
+            cl_ee_w[:nbinee] * yp2 * yp2
+        )  # EE
 
-#     cl_tt = np.dot(
-#         self.win_func_tt[: self.bmax, 1 : self.lmax_win], cltt[1 : self.lmax_win]
-#     )
-#     cl_te = np.dot(
-#         self.win_func_te[: self.bmax, 1 : self.lmax_win], clte[1 : self.lmax_win]
-#     )
-#     cl_ee = np.dot(
-#         self.win_func_ee[: self.bmax, 1 : self.lmax_win], clee[1 : self.lmax_win]
-#     )
+        Y = self.X_data - X_model
 
-#     X_model[0 : self.nbintt] = cl_tt[self.b0 - 1 : self.b0 - 1 + self.nbintt]  # TT
-#     X_model[self.nbintt : self.nbintt + self.nbinte + 1] = (
-#         cl_te[: self.nbinte + 1] * yp
-#     )
-#     X_model[self.nbintt + self.nbinte : self.nbintt + self.nbinte + self.nbinee] = (
-#         cl_ee[: self.nbinee] * yp ** 2.0
-#     )
+        # covmat selection
+        nbinw = self.nbinw
+        nbintt, nbinte, nbinee = self.nbintt, self.nbinte, self.nbinee
+        use_tt, use_te, use_ee = self.use_tt, self.use_te, self.use_ee
+        diff_vec = np.zeros(self.bin_no)
+        if (self.use_tt) and (not self.use_te) and (not self.use_ee):  # TT only
+            diff_vec[:nbintt] = Y[:nbintt]  # deep
+            diff_vec[nbintt:bin_no] = Y[self.nbinw : self.nbinw + nbintt]  # wide
+        elif (not use_tt) and (use_te) and (not use_ee):  # TE only
+            diff_vec[:nbinte] = Y[nbintt : nbintt + nbinte]  # deep
+            diff_vec[nbinte:bin_no] = Y[
+                nbinw + nbintt : nbinw + nbintt + nbinte
+            ]  # wide
+        elif (not use_tt) and (not use_te) and (use_ee):  # EE only
+            diff_vec[:nbinee] = Y[nbintt + nbinte : nbintt + nbinte + nbinee]  # deep
+            diff_vec[nbinee:bin_no] = Y[
+                nbinw + nbintt + nbinte : nbinw + nbintt + nbinte + nbinee
+            ]  # wide
+        elif use_tt and use_te and use_ee:  # all
+            diff_vec = Y
+        else:
+            raise ValueError(
+                "Options are: (TT+TE+EE), (only TT), (only TE), or (only EE)"
+            )
 
-#     Y = self.X_data - X_model
-#     tmp = np.zeros((self.nbin, 1))
-#     tmp[: self.nbin] = np.transpose(np.array([X_model[: self.nbin + 1]]))
-#     cov_tot = self.covmat + (self.sigc ** 2.0) * np.dot(tmp, np.transpose(tmp))
+        ptemp = np.dot(self.fisher, diff_vec)
+        like = np.sum(ptemp * diff_vec) / 2.0
 
-#     # choose which data is used
-#     if (self.use_tt) and (not self.use_te) and (not self.use_ee):
-#         bin_no = self.nbintt
-#         diff_vec = Y[:bin_no]
-#         fisher = cov_tot[:bin_no, :bin_no]
-#     elif (not self.use_tt) and (self.use_te) and (not self.use_ee):
-#         bin_no = self.nbinte
-#         diff_vec = Y[self.nbintt : self.nbintt + bin_no]
-#         fisher = cov_tot[
-#             self.nbintt : self.nbintt + bin_no, self.nbintt : self.nbintt + bin_no
-#         ]
-#     elif (not self.use_tt) and (not self.use_te) and (self.use_ee):
-#         bin_no = self.nbinee
-#         diff_vec = Y[self.nbintt + self.nbinte : self.nbintt + self.nbinte + bin_no]
-#         fisher = cov_tot[
-#             self.nbintt + self.nbinte : self.nbintt + self.nbinte + bin_no,
-#             self.nbintt + self.nbinte : self.nbintt + self.nbinte + bin_no,
-#         ]
-#     elif self.use_tt and self.use_te and self.use_ee:
-#         bin_no = self.nbin
-#         diff_vec = Y
-#         fisher = cov_tot
-#     else:
-#         print("You've chosen a mode which isn't implemented.")
-
-#     # now invert the fisher (covmat), cholesky factor and then invert
-#     fisher = linalg.cho_solve(linalg.cho_factor(fisher), b=np.identity(bin_no))
-#     fisher = np.transpose(fisher)
-
-#     ptemp = np.dot(fisher, diff_vec)
-#     like = np.sum(ptemp * diff_vec) / 2.0
-
-#     return like
+        return like

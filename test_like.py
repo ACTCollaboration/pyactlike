@@ -50,8 +50,12 @@ def test_cobaya():
             H0:
                 prior:
                   min: 40
-                  max: 100        
+                  max: 100       
+            yp2:
+                prior:
+                    min: 0.5
+                    max: 1.5       
         """
     info = yaml_load(info_yaml)
     model = get_model(info)
-    assert np.isfinite(model.loglike({"ns": 1.0, "H0": 70})[0])
+    assert np.isfinite(model.loglike({"ns": 1.0, "H0": 70, "yp2": 1.0})[0])

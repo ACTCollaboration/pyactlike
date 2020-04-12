@@ -254,36 +254,32 @@ class ACTPowerSpectrumData:
         return log_like_result
 
 
+# cobaya interface for the ACT Likelihood
 class ACTPol_lite_DR4(Likelihood):
     name: str = "ACT"
     components: Optional[Sequence] = ["tt", "te", "ee"]
     lmax: int = 7000
 
     def initialize(self):
-        self.use_cl = [c.lower() for c in self.components]
+        self.components = [c.lower() for c in self.components]
         self.packages_path = os.getenv("COBAYA_PACKAGES_PATH", None)
+        self.calibration_param = ["yp2"]
 
-        if not (len(self.use_cl) in (1, 3)):
+        if not (len(self.components) in (1, 3)):
             raise ValueError(
                 "components can be: [tt,te,ee], or a single component of tt, te, or ee"
             )
 
         self.data = ACTPowerSpectrumData(
-            use_tt=("tt" in self.use_cl),
-            use_te=("te" in self.use_cl),
-            use_ee=("ee" in self.use_cl),
+            use_tt=("tt" in self.components),
+            use_te=("te" in self.components),
+            use_ee=("ee" in self.components),
         )
 
     def get_requirements(self):
         # State requisites to the theory code
         self.l_max = self.lmax
-        return {"Cl": {cl: self.l_max for cl in self.use_cl}}
-
-    # # NOTE: legacy function for Cobaya versions < 2.1.0
-    # def add_theory(self):
-    #     # State requisites to the theory code
-    #     self.l_max = self.lmax
-    #     self.theory.needs(**{"Cl": {cl: self.l_max for cl in self.use_cl}})
+        return {"yp2": None, "Cl": {cl: self.l_max for cl in self.components}}
 
     def _get_Cl(self):
         return self.theory.get_Cl(ell_factor=True)
@@ -294,5 +290,5 @@ class ACTPol_lite_DR4(Likelihood):
 
     def logp(self, **params_values):
         Cl = self._get_Cl()
-        yp2 = 1.0
+        yp2 = self.provider.get_param("yp2")
         return self.data.loglike(Cl["tt"][2:], Cl["te"][2:], Cl["ee"][2:], yp2)

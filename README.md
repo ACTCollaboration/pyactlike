@@ -13,9 +13,25 @@ cd pyactlike
 pip install . --user
 ```
 
-You can omit the `--user` if you are in an Anaconda environment. This package is designed to interface with Cobaya.
+You can omit the `--user` if you are in an Anaconda environment. This package is designed to interface with Cobaya. If you are on Cobaya 2.1.0 (currently the devel branch), using the likelihood is as easy as including it in your YAML or configuration dict. There's one nuisance parameter, the overall calibration called `yp2`.
 
-*cite*: Ailoa et al. 2020, Choi et al. 2020.
+```
+    likelihood:
+        pyactlike.ACTPol_lite_DR4:
+            components: 
+                - tt
+                - te
+                - ee
+            lmax: 6000
+    
+    params:   
+        yp2:
+            prior:
+                min: 0.5
+                max: 1.5     
+```
+
+*cite*: Aiola et al. 2020, Choi et al. 2020. This code should be attributed to the ACT collaboration, and it is based off of the Fortran likelihood written by Erminia Calabrese and Jo Dunkley. Thanks to Tim Morton for helping interface with Cobaya.
 
 ### Tests
 Run `pytest` in the repository base directory run the tests.

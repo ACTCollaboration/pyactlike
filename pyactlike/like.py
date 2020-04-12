@@ -1,4 +1,4 @@
-# act likelihood, ported 11/6/2016 Zack Li
+# ACT likelihood, ported 11/6/2016 Zack Li, updated for DR4 on 4/11/2020
 # original fortran by E. Calabrese, J. Dunkley 2016
 
 import os, sys
@@ -6,11 +6,21 @@ import numpy as np
 from scipy.io import FortranFile  # need this to read the fortran data format
 from scipy import linalg  # need this for cholesky decomposition and inverse
 import pkg_resources
+from typing import Optional, Sequence
+
+# load in cobaya class if it's there
+try:
+    from cobaya.likelihood import Likelihood
+except:
+
+    class Likelihood:  # dummy class to inherit if cobaya is missing
+        pass
+
 
 # NOTE: all bin indices are i-1 if they are i in the fortran likelihood, like b0 and bmin
 
 
-class ACTPowerSpectrumLikelihood:
+class ACTPowerSpectrumData:
     def __init__(
         self,
         print_version=False,  # whether we print out stuff when initializing
@@ -18,7 +28,7 @@ class ACTPowerSpectrumLikelihood:
         use_te=True,
         use_ee=True,
         tt_lmax=5000,
-        bmin=0,  # for ACTPol only or ACTPol+WMAP, 24 for ACTPol+Planck
+        bmin=0,  # 0 for ACTPol only or ACTPol+WMAP, 23 for ACTPol+Planck
         b0=5,  # first bin in TT theory selection
         nbin=260,  # total bins
         nbinw=130,  # total bins in single patch
@@ -46,7 +56,7 @@ class ACTPowerSpectrumLikelihood:
         self.bmax_win = bmax_win
         self.bmax = bmax
 
-        self.version = "ACTPollite dr4"
+        self.version = "ACTPollite dr4 v4"
         if print_version:
             print("Initializing ACTPol likelihood, version", self.version)
 
@@ -126,7 +136,7 @@ class ACTPowerSpectrumLikelihood:
             subcov = cov
         else:
             raise ValueError(
-                "Options are: (TT+TE+EE), (only TT), (only TE), or (only EE)"
+                "Options are: (tt+te+ee), (only tt), (only te), or (only ee)"
             )
 
         self.bin_no = bin_no
@@ -149,9 +159,9 @@ class ACTPowerSpectrumLikelihood:
             print("Couldn't load file", bblwide_file)
             sys.exit()
 
-    def loglike(self, cell_tt, cell_te, cell_ee, yp2):
+    def loglike(self, dell_tt, dell_te, dell_ee, yp2):
         """
-	    Pass in the cell_tt, cell_te, cell_ee, and yp values, get 2 * log L out.
+	    Pass in the dell_tt, dell_te, dell_ee, and yp values, get 2 * log L out.
         """
 
         # ----- coding notes -----
@@ -172,9 +182,15 @@ class ACTPowerSpectrumLikelihood:
         clee = np.zeros(self.lmax_win)
 
         # convert to regular C_l, get rid of weighting
-        cltt[1 : self.tt_lmax] = cell_tt / l_list / (l_list + 1.0) * 2.0 * np.pi
-        clte[1 : self.tt_lmax] = cell_te / l_list / (l_list + 1.0) * 2.0 * np.pi
-        clee[1 : self.tt_lmax] = cell_ee / l_list / (l_list + 1.0) * 2.0 * np.pi
+        cltt[1 : self.tt_lmax] = (
+            dell_tt[: self.tt_lmax - 1] / l_list / (l_list + 1.0) * 2.0 * np.pi
+        )
+        clte[1 : self.tt_lmax] = (
+            dell_te[: self.tt_lmax - 1] / l_list / (l_list + 1.0) * 2.0 * np.pi
+        )
+        clee[1 : self.tt_lmax] = (
+            dell_ee[: self.tt_lmax - 1] / l_list / (l_list + 1.0) * 2.0 * np.pi
+        )
 
         # use 150x150 windows
         bmax, lmax_win = self.bmax, self.lmax_win
@@ -229,10 +245,54 @@ class ACTPowerSpectrumLikelihood:
             diff_vec = Y
         else:
             raise ValueError(
-                "Options are: (TT+TE+EE), (only TT), (only TE), or (only EE)"
+                "Options are: (tt+te+ee), (only tt), (only te), or (only ee)"
             )
 
         ptemp = np.dot(self.fisher, diff_vec)
-        like = np.sum(ptemp * diff_vec) / 2.0
+        log_like_result = -0.5 * np.sum(ptemp * diff_vec)
 
-        return like
+        return log_like_result
+
+
+class ACTPol_lite_DR4(Likelihood):
+    name: str = "ACT"
+    components: Optional[Sequence] = ["tt", "te", "ee"]
+    lmax: int = 7000
+
+    def initialize(self):
+        self.use_cl = [c.lower() for c in self.components]
+        self.packages_path = os.getenv("COBAYA_PACKAGES_PATH", None)
+
+        if not (len(self.use_cl) in (1, 3)):
+            raise ValueError(
+                "components can be: [tt,te,ee], or a single component of tt, te, or ee"
+            )
+
+        self.data = ACTPowerSpectrumData(
+            use_tt=("tt" in self.use_cl),
+            use_te=("te" in self.use_cl),
+            use_ee=("ee" in self.use_cl),
+        )
+
+    def get_requirements(self):
+        # State requisites to the theory code
+        self.l_max = self.lmax
+        return {"Cl": {cl: self.l_max for cl in self.use_cl}}
+
+    # # NOTE: legacy function for Cobaya versions < 2.1.0
+    # def add_theory(self):
+    #     # State requisites to the theory code
+    #     self.l_max = self.lmax
+    #     self.theory.needs(**{"Cl": {cl: self.l_max for cl in self.use_cl}})
+
+    def _get_Cl(self):
+        return self.theory.get_Cl(ell_factor=True)
+
+    def _get_theory(self, **params_values):
+        cl_theory = self._get_Cl()
+        return cl_theory
+
+    def logp(self, **params_values):
+        Cl = self._get_Cl()
+        yp2 = 1.0
+        return self.data.loglike(Cl["tt"][2:], Cl["te"][2:], Cl["ee"][2:], yp2)

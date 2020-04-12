@@ -17,7 +17,7 @@ except:
         pass
 
 
-# NOTE: all bin indices are i-1 if they are i in the fortran likelihood, like b0 and bmin
+# NOTE: all bin indices are i-1 if they are i in the fortran likelihood, like b0
 
 
 class ACTPowerSpectrumData:
@@ -28,7 +28,7 @@ class ACTPowerSpectrumData:
         use_te=True,
         use_ee=True,
         tt_lmax=5000,
-        bmin=0,  # 0 for ACTPol only or ACTPol+WMAP, 23 for ACTPol+Planck
+        bmin=0,  # 0 for ACTPol only or ACTPol+WMAP, 24 for ACTPol+Planck
         b0=5,  # first bin in TT theory selection
         nbin=260,  # total bins
         nbinw=130,  # total bins in single patch
@@ -87,6 +87,16 @@ class ACTPowerSpectrumData:
         except IOError:
             print("Couldn't load file", cov_file)
             sys.exit()
+
+        # cull lmin in TT
+        if bmin > 0:
+            for i in range(bmin):
+                cov[i, :nbintt] = 0.0  # deep
+                cov[:nbintt, i] = 0.0  # deep
+                cov[i, i] = 1e10  # deep
+                cov[nbinw + i, nbinw : nbinw + nbintt] = 0.0  # wide
+                cov[nbinw : nbinw + nbintt, nbinw + i] = 0.0  # wide
+                cov[nbinw + i, nbinw + i] = 1e10  # wide
 
         # covmat selection
         if (use_tt) and (not use_te) and (not use_ee):  # TT only

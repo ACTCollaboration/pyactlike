@@ -1,5 +1,7 @@
 # ACTPol CMB Power Spectrum Likelihood
 
+![Python package](https://github.com/ACTCollaboration/pyactlike/workflows/Python%20package/badge.svg)
+
 This is the likelihood derived from the data release 4 (DR4) foreground-marginalized CMB power spectrum measured with the Atacama Cosmology Telescope (ACT).
 
 <img src="https://act.princeton.edu/sites/act/files/styles/panopoly_image_original/public/media/angelapano.jpg" 

@@ -1,5 +1,6 @@
-import pyactlike
+import pytest
 import numpy as np
+import pyactlike
 
 
 def test_all():
@@ -28,6 +29,7 @@ def test_all():
     assert np.isclose(chi2, 229.549820401640)
 
 
+@pytest.mark.skip(reason="still in development")
 def test_cobaya():
     """Test the Cobaya interface to the ACT likelihood."""
     from cobaya.yaml import yaml_load

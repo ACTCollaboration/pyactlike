@@ -24,19 +24,19 @@ You can omit the `--user` if you are in an Anaconda environment.
 This package is designed to interface with Cobaya. If you are on Cobaya 2.1.0 (currently the devel branch), using the likelihood is as easy as including it in your YAML or configuration dict. There's one nuisance parameter, the overall calibration called `yp2`.
 
 ```
-    likelihood:
-        pyactlike.ACTPol_lite_DR4:
-            components: 
-                - tt
-                - te
-                - ee
-            lmax: 6000
-    
-    params:   
-        yp2:
-            prior:
-                min: 0.5
-                max: 1.5     
+likelihood:
+    pyactlike.ACTPol_lite_DR4:
+        components: 
+            - tt
+            - te
+            - ee
+        lmax: 6000
+
+params:   
+    yp2:
+        prior:
+            min: 0.5
+            max: 1.5     
 ```
 
 If you are using a Cobaya version &lt; 2.1.0, please see the example Jupyter notebook in

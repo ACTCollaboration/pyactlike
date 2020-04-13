@@ -1,4 +1,4 @@
-# ACTPol CMB Power Spectrum Likelihood
+# ACTPol DR4 CMB Power Spectrum Likelihood
 
 ![Python package](https://github.com/ACTCollaboration/pyactlike/workflows/Python%20package/badge.svg)
 
@@ -10,7 +10,7 @@ This is the **Data Release 4 (DR4)** CMB power spectrum likelihood measured by t
 alt="panoramic image"/></a>
 
 ## Installation
-To install, clone this repository and pip install it.
+To install, clone this repository and install it using pip.
 ```bash
 git clone https://github.com/ACTCollaboration/pyactlike
 cd pyactlike
@@ -38,6 +38,9 @@ This package is designed to interface with Cobaya. If you are on Cobaya 2.1.0 (c
                 min: 0.5
                 max: 1.5     
 ```
+
+If you are using a Cobaya version &lt; 2.1.0, please see the example Jupyter notebook in
+`notebooks/ExternalCobaya.ipynb`.
 
 ## Tests
 Run `pytest` in the repository base directory run the tests.

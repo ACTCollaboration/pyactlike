@@ -234,10 +234,10 @@ class ACTPowerSpectrumData:
         Y = self.X_data - X_model
 
         # covmat selection
-        nbinw = self.nbinw
+        nbinw, bin_no = self.nbinw, self.bin_no
         nbintt, nbinte, nbinee = self.nbintt, self.nbinte, self.nbinee
         use_tt, use_te, use_ee = self.use_tt, self.use_te, self.use_ee
-        diff_vec = np.zeros(self.bin_no)
+        diff_vec = np.zeros(bin_no)
         if (self.use_tt) and (not self.use_te) and (not self.use_ee):  # TT only
             diff_vec[:nbintt] = Y[:nbintt]  # deep
             diff_vec[nbintt:bin_no] = Y[self.nbinw : self.nbinw + nbintt]  # wide

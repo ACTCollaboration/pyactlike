@@ -40,7 +40,7 @@ This package is designed to interface with Cobaya. If you are on Cobaya 2.1.0 (c
 ```
 
 If you are using a Cobaya version &lt; 2.1.0, please see the example Jupyter notebook in
-`notebooks/ExternalCobaya.ipynb`.
+`notebooks/Example for Cobaya (stable).ipynb`.
 
 ## Tests
 Run `pytest` in the repository base directory run the tests.

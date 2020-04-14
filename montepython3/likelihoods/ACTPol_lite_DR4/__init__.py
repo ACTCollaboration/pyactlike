@@ -30,7 +30,7 @@ class ACTPol_lite_DR4(Likelihood):
         self.use_nuisance = ["yp2"]
         self.nuisance = ["yp2"]
 
-        self.act = pyactlike.ACTPol_s2(self.actdata)
+        self.act = pyactlike.ACTPowerSpectrumData()
 
         # \ell values 2, 3, ... 6000
         self.xx = np.array(range(2, 6001))

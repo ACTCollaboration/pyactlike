@@ -17,11 +17,15 @@ cd pyactlike
 pip install . --user
 ```
 
-You can omit the `--user` if you are in an Anaconda environment. 
-
 ## Usage
 
-This package is designed to interface with Cobaya. If you are on Cobaya 2.1.0 (currently the devel branch), using the likelihood is as easy as including it in your YAML or configuration dict. There's one nuisance parameter, the overall calibration called `yp2`.
+This package works with both [Cobaya][1] and [MontePython 3][2]. For MontePython support,
+see the `montepython3/` directory in this repository. If you are on **Cobaya** 2.1.0 
+(currently the devel branch), using the likelihood is as easy as including it in your YAML 
+or configuration dict. There's one nuisance parameter, the overall calibration called `yp2`.
+
+[1]: https://github.com/CobayaSampler/cobaya
+[2]: https://github.com/brinckmann/montepython_public
 
 ```
 likelihood:

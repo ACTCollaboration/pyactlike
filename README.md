@@ -20,9 +20,12 @@ pip install . --user
 ## Usage
 
 This package works with both [Cobaya][1] and [MontePython 3][2]. For MontePython support,
-see the `montepython3/` directory in this repository. If you are on **Cobaya** 2.1.0 
+see the `montepython3/` directory in this repository. If you are using a Cobaya version &lt; 2.1.0 (the current stable branch), please see the example Jupyter notebook in
+`notebooks/Example for Cobaya (stable).ipynb`.
+
+If you are on Cobaya 2.1.0 
 (currently the devel branch), using the likelihood is as easy as including it in your YAML 
-or configuration dict. There's one nuisance parameter, the overall calibration called `yp2`.
+or configuration dict. There's one nuisance parameter, the polarization efficiency `yp2`.
 
 [1]: https://github.com/CobayaSampler/cobaya
 [2]: https://github.com/brinckmann/montepython_public
@@ -30,11 +33,6 @@ or configuration dict. There's one nuisance parameter, the overall calibration c
 ```
 likelihood:
     pyactlike.ACTPol_lite_DR4:
-        components: 
-            - tt
-            - te
-            - ee
-        lmax: 6000
 
 params:   
     yp2:
@@ -43,8 +41,12 @@ params:
             max: 1.5     
 ```
 
-If you are using a Cobaya version &lt; 2.1.0, please see the example Jupyter notebook in
-`notebooks/Example for Cobaya (stable).ipynb`.
+We provide additional likelihood configurations for common uses, 
+* `pyactlike.ACTPol_lite_DR4_for_combining_with_Planck` for TT,TE,EE excluding the large scale ACT temperature
+* `pyactlike.ACTPol_lite_DR4_onlyTT` for restricting only to TT
+* `pyactlike.ACTPol_lite_DR4_onlyTE` for restricting only to TE
+* `pyactlike.ACTPol_lite_DR4_onlyEE` for restricting only to EE
+
 
 ## Tests
 Run `pytest` in the repository base directory run the tests.

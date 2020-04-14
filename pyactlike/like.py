@@ -266,9 +266,13 @@ class ACTPowerSpectrumData:
 
 # cobaya interface for the ACT Likelihood
 class ACTPol_lite_DR4(Likelihood):
-    name: str = "ACT"
+    name: str = "ACTPol_lite_DR4"
     components: Optional[Sequence] = ["tt", "te", "ee"]
     lmax: int = 7000
+    bmin: int = 0
+    nbintt: int = 40
+    nbinte: int = 45
+    nbinee: int = 45
 
     def initialize(self):
         self.components = [c.lower() for c in self.components]
@@ -284,6 +288,10 @@ class ACTPol_lite_DR4(Likelihood):
             use_tt=("tt" in self.components),
             use_te=("te" in self.components),
             use_ee=("ee" in self.components),
+            bmin=self.bmin,
+            nbintt=self.nbintt,
+            nbinte=self.nbinte,
+            nbinee=self.nbinee,
         )
 
     def get_requirements(self):
@@ -302,3 +310,25 @@ class ACTPol_lite_DR4(Likelihood):
         Cl = self._get_Cl()
         yp2 = self.provider.get_param("yp2")
         return self.data.loglike(Cl["tt"][2:], Cl["te"][2:], Cl["ee"][2:], yp2)
+
+
+# convenience class for combining with Planck
+class ACTPol_lite_DR4_for_combining_with_Planck(ACTPol_lite_DR4):
+    name: str = "ACTPol_lite_DR4_for_combining_with_Planck"
+    bmin: int = 24
+
+
+# single channel convenience classes
+class ACTPol_lite_DR4_onlyTT(ACTPol_lite_DR4):
+    name: str = "ACTPol_lite_DR4_onlyTT"
+    components: Optional[Sequence] = ["tt"]
+
+
+class ACTPol_lite_DR4_onlyTE(ACTPol_lite_DR4):
+    name: str = "ACTPol_lite_DR4_onlyTE"
+    components: Optional[Sequence] = ["te"]
+
+
+class ACTPol_lite_DR4_onlyEE(ACTPol_lite_DR4):
+    name: str = "ACTPol_lite_DR4_onlyEE"
+    components: Optional[Sequence] = ["ee"]

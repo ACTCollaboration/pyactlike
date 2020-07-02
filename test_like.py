@@ -28,36 +28,34 @@ def test_TTTEEE():
     assert np.isclose(chi2, 288.252869629064)
 
 
-@pytest.mark.skip(reason="bmin tests optional")
 def test_bmin():
     # nonzero bmin
     ell, dell_tt, dell_te, dell_ee = get_example_spectra()
     like = pyactlike.ACTPowerSpectrumData(bmin=24)
-    chi2 = -2 * like.loglike(dell_tt, dell_te, dell_ee, 1.0)
+    chi2 = -2 * like.loglike(dell_tt, dell_te, dell_ee, 1.003)
     print("ACTPol chi2 = " + "{0:.12f}".format(chi2))
-    print("Expected:     229.549820401640")
-    assert np.isclose(chi2, 229.549820401640)
+    print("Expected:     235.146031846935")
+    assert np.isclose(chi2, 235.146031846935)
 
 
-@pytest.mark.skip(reason="single channel optional")
 def test_single_channel():
     """This function tests out the single channels functionality of this likelihood code."""
 
     # TT only
     like = pyactlike.ACTPowerSpectrumData(use_tt=True, use_te=False, use_ee=False)
     ell, dell_tt, dell_te, dell_ee = get_example_spectra()
-    chi2 = -2 * like.loglike(dell_tt, dell_te, dell_ee, 1.0)
-    assert np.isclose(chi2, 95.5664869836360)
+    chi2 = -2 * like.loglike(dell_tt, dell_te, dell_ee, 1.003)
+    assert np.isclose(chi2, 97.4331220842641)
 
     # TE only
     like = pyactlike.ACTPowerSpectrumData(use_tt=False, use_te=True, use_ee=False)
-    chi2 = -2 * like.loglike(dell_tt, dell_te, dell_ee, 1.0)
-    assert np.isclose(chi2, 74.3112767035285)
+    chi2 = -2 * like.loglike(dell_tt, dell_te, dell_ee, 1.003)
+    assert np.isclose(chi2, 81.6194890026420)
 
     # EE only
     like = pyactlike.ACTPowerSpectrumData(use_tt=False, use_te=False, use_ee=True)
-    chi2 = -2 * like.loglike(dell_tt, dell_te, dell_ee, 1.0)
-    assert np.isclose(chi2, 100.844689570906)
+    chi2 = -2 * like.loglike(dell_tt, dell_te, dell_ee, 1.003)
+    assert np.isclose(chi2, 98.5427508626497)
 
 
 @pytest.mark.skip(reason="cobaya optional")

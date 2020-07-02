@@ -19,7 +19,7 @@ pip install . --user
 
 ## Usage
 
-This package works with both [Cobaya][1] and [MontePython 3][2]. For MontePython support,
+This package works with both [Cobaya][1]. For experimental MontePython support,
 see the `montepython3/` directory in this repository. If you are using a Cobaya version &lt; 2.1.0 (the current stable branch), please see the example Jupyter notebook in
 `notebooks/Example for Cobaya (stable).ipynb`.
 

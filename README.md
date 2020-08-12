@@ -4,7 +4,7 @@
 
 This is the **Data Release 4 (DR4)** CMB power spectrum likelihood measured by the Atacama Cosmology Telescope (ACT), from the 2013–2016 survey covering >15,000 sq. deg. This spectrum has already been marginalized over SZ and foreground emission. The polarization efficiency is the only nuisance parameter required to be sampled. It is based on the WMAP and ACT team's likelihood software.
 
-**Cite:** Aiola et al. 2020, Choi et al. 2020. This package is based off of the Fortran implementation written by Erminia Calabrese and Jo Dunkley. Thanks to Tim Morton for helping interface with Cobaya.
+**Cite:** Aiola et al. 2020, Choi et al. 2020. This package is based off of the Fortran implementation written by Erminia Calabrese and Jo Dunkley. Thanks to Tim Morton for helping interface with Cobaya, and special thanks to Leander Thiele for finding a bug in the Monte Python 3 wrapper.
 
 <img src="https://act.princeton.edu/sites/act/files/styles/panopoly_image_original/public/media/angelapano.jpg" 
 alt="panoramic image"/></a>

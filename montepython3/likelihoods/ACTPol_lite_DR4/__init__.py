@@ -55,7 +55,7 @@ class ACTPol_lite_DR4(Likelihood):
             ee = (self.xx) * (self.xx + 1) * ee / (2 * np.pi)
 
             yp = data.mcmc_parameters["yp2"]["current"]
-            lkl = -self.act.loglike(tt, te, ee, yp)
+            lkl = self.act.loglike(tt, te, ee, yp)
 
         except:
             lkl = -np.inf

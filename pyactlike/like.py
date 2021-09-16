@@ -38,6 +38,9 @@ class ACTPowerSpectrumData:
         lmax_win=7925,  # total ell in window functions
         bmax_win=520,  # total bins in window functions
         bmax=52,  # total bins in windows for one spec
+        use_deep=True,
+        use_wide=True,
+        calTE=False,
     ):
 
         # set up all the config variables
@@ -55,6 +58,11 @@ class ACTPowerSpectrumData:
         self.lmax_win = lmax_win
         self.bmax_win = bmax_win
         self.bmax = bmax
+
+        self.use_wide = use_wide
+        self.use_deep = use_deep
+
+        self.calTE = calTE
 
         self.version = "ACTPollite dr4 v4"
         if print_version:
@@ -108,6 +116,10 @@ class ACTPowerSpectrumData:
             ]
             subcov[:nbintt, nbintt:bin_no] = cov[:nbintt, nbinw : nbinw + nbintt]
             subcov[nbintt:bin_no, :nbintt] = cov[nbinw : nbinw + nbintt, :nbintt]
+            if (self.use_wide) and (not self.use_deep):
+                subcov_w = subcov[nbintt:bin_no, nbintt:bin_no]
+            elif (self.use_deep) and (not self.use_wide):
+                subcov_d = subcov[:nbintt, :nbintt]
         elif (not use_tt) and (use_te) and (not use_ee):  # TE only
             bin_no = nbinte + nbinte
             subcov = np.zeros((bin_no, bin_no))
@@ -124,6 +136,10 @@ class ACTPowerSpectrumData:
             subcov[nbinte:bin_no, :nbinte] = cov[
                 nbinw + nbintt : nbinw + nbintt + nbinte, nbintt : nbintt + nbinte,
             ]  # offdiag
+            if (self.use_wide) and (not self.use_deep):
+                subcov_w = subcov[nbinte:bin_no, nbinte:bin_no]
+            elif (self.use_deep) and (not self.use_wide):
+                subcov_d = subcov[:nbinte, :nbinte]
         elif (not use_tt) and (not use_te) and (use_ee):  # EE only
             bin_no = nbinee + nbinee
             subcov = np.zeros((bin_no, bin_no))
@@ -141,16 +157,30 @@ class ACTPowerSpectrumData:
             subcov[nbinee:bin_no, :nbinee] = cov[
                 nbinw + nbintt + nbinte : nbinw + nbinw, nbintt + nbinte : nbinw
             ]  # offdiag
+            if (self.use_wide) and (not self.use_deep):
+                subcov_w = subcov[nbinee:bin_no, nbinee:bin_no]
+            elif (self.use_deep) and (not self.use_wide):
+                subcov_d = subcov[:nbinee, :nbinee]
         elif use_tt and use_te and use_ee:  # all
             bin_no = nbin
             subcov = cov
+            if (self.use_wide) and (not self.use_deep):
+                subcov_w = subcov[nbinw:nbin, nbinw:nbin]
+            elif (self.use_deep) and (not self.use_wide):
+                subcov_d = subcov[:nbinw, :nbinw]
         else:
             raise ValueError(
                 "Options are: (tt+te+ee), (only tt), (only te), or (only ee)"
             )
 
         self.bin_no = bin_no
-        self.fisher = linalg.cho_solve(linalg.cho_factor(subcov), b=np.identity(bin_no))
+        
+        if (self.use_wide) and (not self.use_deep):
+            self.fisher_w = linalg.cho_solve(linalg.cho_factor(subcov_w), b=np.identity(int(bin_no/2)))
+        elif (self.use_deep) and (not self.use_wide):
+            self.fisher_d = linalg.cho_solve(linalg.cho_factor(subcov_d), b=np.identity(int(bin_no/2)))
+        elif (self.use_deep) and (self.use_wide):
+            self.fisher = linalg.cho_solve(linalg.cho_factor(subcov), b=np.identity(bin_no))
 
         # read window functions
         try:
@@ -169,7 +199,7 @@ class ACTPowerSpectrumData:
             print("Couldn't load file", bblwide_file)
             sys.exit()
 
-    def loglike(self, dell_tt, dell_te, dell_ee, yp2):
+    def loglike(self, dell_tt, dell_te, dell_ee, yp2,ypTE=None):
         """
 	    Pass in the dell_tt, dell_te, dell_ee, and yp values, get 2 * log L out.
         """
@@ -212,6 +242,10 @@ class ACTPowerSpectrumData:
         cl_te_w = self.win_func_w[6 * bmax : 7 * bmax, 1:lmax_win] @ clte[1:lmax_win]
         cl_ee_w = self.win_func_w[9 * bmax : 10 * bmax, 1:lmax_win] @ clee[1:lmax_win]
 
+        if self.calTE:
+            cl_te_d = cl_te_d * ypTE
+            cl_te_w = cl_te_w * ypTE
+
         # Select ell range in theory
         b0, nbintt, nbinte, nbinee = self.b0, self.nbintt, self.nbinte, self.nbinee
         X_model[:nbintt] = cl_tt_d[b0 : b0 + nbintt]  # TT
@@ -241,25 +275,51 @@ class ACTPowerSpectrumData:
         if (self.use_tt) and (not self.use_te) and (not self.use_ee):  # TT only
             diff_vec[:nbintt] = Y[:nbintt]  # deep
             diff_vec[nbintt:bin_no] = Y[self.nbinw : self.nbinw + nbintt]  # wide
+            if (self.use_wide) and (not self.use_deep):
+                diff_vec_w = diff_vec[nbintt:bin_no]
+            elif (self.use_deep) and (not self.use_wide):
+                diff_vec_d = diff_vec[:nbintt]
         elif (not use_tt) and (use_te) and (not use_ee):  # TE only
             diff_vec[:nbinte] = Y[nbintt : nbintt + nbinte]  # deep
             diff_vec[nbinte:bin_no] = Y[
                 nbinw + nbintt : nbinw + nbintt + nbinte
             ]  # wide
+            if (self.use_wide) and (not self.use_deep):
+                diff_vec_w = diff_vec[nbinte:bin_no]
+            elif (self.use_deep) and (not self.use_wide):
+                diff_vec_d = diff_vec[:nbinte]
         elif (not use_tt) and (not use_te) and (use_ee):  # EE only
             diff_vec[:nbinee] = Y[nbintt + nbinte : nbintt + nbinte + nbinee]  # deep
             diff_vec[nbinee:bin_no] = Y[
                 nbinw + nbintt + nbinte : nbinw + nbintt + nbinte + nbinee
             ]  # wide
+            if (self.use_wide) and (not self.use_deep):
+                diff_vec_w = diff_vec[nbinee:bin_no]
+            elif (self.use_deep) and (not self.use_wide):
+                diff_vec_d = diff_vec[:nbinee]
         elif use_tt and use_te and use_ee:  # all
             diff_vec = Y
+            if (self.use_wide) and (not self.use_deep):
+                diff_vec_w = diff_vec[nbinw:bin_no]
+            elif (self.use_deep) and (not self.use_wide):
+                diff_vec_d = diff_vec[:nbinw]
         else:
             raise ValueError(
                 "Options are: (tt+te+ee), (only tt), (only te), or (only ee)"
             )
-
-        ptemp = np.dot(self.fisher, diff_vec)
-        log_like_result = -0.5 * np.sum(ptemp * diff_vec)
+        if (self.use_wide) and (not self.use_deep):
+            print('You are using only the wide region')
+            ptemp = np.dot(self.fisher_w, diff_vec_w)
+            log_like_result = -0.5 * np.sum(ptemp * diff_vec_w)
+            
+        elif (self.use_deep) and (not self.use_wide):
+            print('You are using only the deep region')
+            ptemp = np.dot(self.fisher_d, diff_vec_d)
+            log_like_result = -0.5 * np.sum(ptemp * diff_vec_d)
+            
+        elif (self.use_deep) and (self.use_wide):
+            ptemp = np.dot(self.fisher, diff_vec)
+            log_like_result = -0.5 * np.sum(ptemp * diff_vec)
 
         return log_like_result
 
@@ -273,11 +333,14 @@ class ACTPol_lite_DR4(Likelihood):
     nbintt: int = 40
     nbinte: int = 45
     nbinee: int = 45
+    use_wide: bool = True
+    use_deep: bool = True
+    calTE: bool = False
 
     def initialize(self):
         self.components = [c.lower() for c in self.components]
         self.packages_path = os.getenv("COBAYA_PACKAGES_PATH", None)
-        self.calibration_param = ["yp2"]
+        self.calibration_param = ["yp2","ypTE"]
 
         if not (len(self.components) in (1, 3)):
             raise ValueError(
@@ -292,12 +355,15 @@ class ACTPol_lite_DR4(Likelihood):
             nbintt=self.nbintt,
             nbinte=self.nbinte,
             nbinee=self.nbinee,
+            use_wide=self.use_wide,
+            use_deep=self.use_deep,
+            calTE=self.calTE
         )
 
     def get_requirements(self):
         # State requisites to the theory code
         self.l_max = self.lmax
-        return {"yp2": None, "Cl": {cl: self.l_max for cl in self.components}}
+        return {"yp2": None,"ypTE": None, "Cl": {cl: self.l_max for cl in self.components}}
 
     def _get_Cl(self):
         return self.theory.get_Cl(ell_factor=True)
@@ -309,7 +375,10 @@ class ACTPol_lite_DR4(Likelihood):
     def logp(self, **params_values):
         Cl = self._get_Cl()
         yp2 = self.provider.get_param("yp2")
-        return self.data.loglike(Cl["tt"][2:], Cl["te"][2:], Cl["ee"][2:], yp2)
+        ypTE = None
+        if self.calTE:
+            ypTE = self.provider.get_param("ypTE")
+        return self.data.loglike(Cl["tt"][2:], Cl["te"][2:], Cl["ee"][2:], yp2, ypTE)
 
 
 # convenience class for combining with Planck

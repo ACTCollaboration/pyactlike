@@ -10,7 +10,9 @@ from typing import Optional, Sequence
 
 # load in cobaya class if it's there
 try:
-    from cobaya.likelihood import Likelihood
+    from cobaya.likelihoods.base_classes import InstallableLikelihood as Likelihood
+    from cobaya.tools import are_different_params_lists
+    from cobaya.log import LoggedError
 except:
 
     class Likelihood:  # dummy class to inherit if cobaya is missing
@@ -277,7 +279,7 @@ class ACTPol_lite_DR4(Likelihood):
     def initialize(self):
         self.components = [c.lower() for c in self.components]
         self.packages_path = os.getenv("COBAYA_PACKAGES_PATH", None)
-        self.calibration_param = ["yp2"]
+        self.expected_params = ["yp2"]
 
         if not (len(self.components) in (1, 3)):
             raise ValueError(
@@ -293,22 +295,25 @@ class ACTPol_lite_DR4(Likelihood):
             nbinte=self.nbinte,
             nbinee=self.nbinee,
         )
-
+        
+    def initialize_with_params(self):
+        # Check that the parameters are the right ones
+        differences = are_different_params_lists(
+            self.input_params, self.expected_params,
+            name_A="given", name_B="expected")
+        if differences:
+            raise LoggedError(
+                self.log, "Configuration error in parameters: %r.",
+                differences)
+        
     def get_requirements(self):
         # State requisites to the theory code
         self.l_max = self.lmax
-        return {"yp2": None, "Cl": {cl: self.l_max for cl in self.components}}
-
-    def _get_Cl(self):
-        return self.theory.get_Cl(ell_factor=True)
-
-    def _get_theory(self, **params_values):
-        cl_theory = self._get_Cl()
-        return cl_theory
+        return {"yp2": None,"Cl": {cl: self.l_max for cl in self.components}}
 
     def logp(self, **params_values):
-        Cl = self._get_Cl()
-        yp2 = self.provider.get_param("yp2")
+        Cl = self.theory.get_Cl(ell_factor=True)
+        yp2 = params_values["yp2"]
         return self.data.loglike(Cl["tt"][2:], Cl["te"][2:], Cl["ee"][2:], yp2)
 
 

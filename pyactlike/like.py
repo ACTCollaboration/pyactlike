@@ -10,7 +10,7 @@ from typing import Optional, Sequence
 
 # load in cobaya class if it's there
 try:
-    from cobaya.likelihoods.base_classes import InstallableLikelihood
+    from cobaya.likelihoods.base_classes import InstallableLikelihood as Likelihood
     from cobaya.tools import are_different_params_lists
     from cobaya.log import LoggedError
 except:
@@ -267,7 +267,7 @@ class ACTPowerSpectrumData:
 
 
 # cobaya interface for the ACT Likelihood
-class ACTPol_lite_DR4(InstallableLikelihood):
+class ACTPol_lite_DR4(Likelihood):
     name: str = "ACTPol_lite_DR4"
     components: Optional[Sequence] = ["tt", "te", "ee"]
     lmax: int = 7000
